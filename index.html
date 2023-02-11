@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en" >
+    <head>
+        <meta charset="utf-8" />
+        <title>canvas</title>
+        <script type="text/javascript" src="js/jquery-1.5.2.min.js"></script>
+        <style>
+            body {
+                background-color: #eee;
+                color: #000;
+                font: 14px/1.3 Arial, sans-serif;
+                margin: 0px;
+                padding: 0px;
+                background-color: #bababa;
+            }
+            h1 {
+				position:absolute;
+            }
+            .container {
+                margin: 20px auto;
+                position: relative;
+                width: 1000px;
+                height: 550px;
+                color: red;
+            }
+            #canvas{
+                position:relative;
+                background-color: white;
+            }
+            #kano1, #subzero1
+            {
+            	position:absolute;
+            	height: 100%;
+            	z-index: 2;
+            	top: 35px;
+            	display: none;
+            }
+            #kano1 {
+            	right: 0px;
+            }
+            #subzero1 {
+				left: 0px;
+            }
+            #fight {
+				position:absolute;	
+				height: 50px;
+				width: 50px;
+				z-index: 2;
+				opacity: 0;
+				top: 190px;
+				left: 420px;
+				align-content: center;
+				vertical-align: middle;
+            }
+            #back {
+            	position: absolute;
+            	width: 100%;
+            	height: 100%;
+            	z-index: 1;
+            	background-image:url(images/bg/bg1.jpg);
+            	background-position: -400px;
+            }
+            #but {
+            	left: 43%;
+				top: 32%;
+            	z-index: 4;
+            	font-weight: 1000;
+            	position: absolute;
+            	top: 36%;
+            	left: 32%;
+            	font-size: 80px;
+            	cursor: pointer;
+            	text-shadow: 1px 1px 2px black, 0 0 1em red;
+            	font-family: Castellar;
+            	text-align: center;
+            	padding: 7px 15px 7px 15px;
+            	border: 10px solid red;
+            	display: none;
+            }
+        </style>
+        <script>
+            var $canvas, $ctx;
+            var $width, $height;
+            var $bdImage;
+            var $subzero=[];
+            var $keno=[];
+            var $blockSound;
+            var $kickSound;
+            var $fightSound;
+            var $subzeroMoveForward = false;
+            var $subzeroMoveBack = false;
+            var $kenoMoveForward = false;
+            var $kenoMoveBack = false;
+            var $subzeroKickHand = false;
+            var $subzeroKickLeg = false;
+            var $kenoKickHand = false;
+            var $kenoKickLeg = false;
+
+            var $fps = 55;
+
+            var $subzeroLife = 100;
+            var $kenoLife = 100;
+
+            var $subzeroLifeWidth = 300;
+            var $kenoLifeWidth = 300;
+
+            var $kenoLifePos = 645;
+
+            var $subzeroDeath = false;
+            var $kenoDeath = false;
+            var $subzeroWins = false;
+            var $kenoWins = false;
+
+            var $setTime;
+            var $fightImage;
+            var $sizeFightText = 0;
+            
+            function drawCanvas() {
+                clear();
+             	$ctx.drawImage($bdImage, 0, 0, $width, $height);
+                
+                if ($subzeroLife <= 0) {
+                    $subzeroDeath = true;
+                    $subzeroLife = 0;
+                    $subzeroLifeWidth = 0;
+                    $kenoWins = true;
+                }
+                if ($kenoLife <= 0) {
+                    $kenoDeath = true;
+                    $kenoLife = 0;
+                    $kenoLifeWidth = 0;
+                    $subzeroWins = true;
+                }
+                
+                if (Math.abs($keno.x-$subzero.x) < 120) {
+                	if ($subzeroLife != 0) {
+                		if ($subzeroKickHand) {
+                        	$kickSound.play();
+                        	$kenoLife -= 1;
+                        	$kenoLifeWidth -= 3;
+                        	$kenoLifePos += 3;
+                    	}
+                    	if ($subzeroKickLeg) {
+                    		$kickSound.play();
+                        	$kenoLife -= 1;
+                        	$kenoLifeWidth -= 3;
+                        	$kenoLifePos += 3;
+                    	}
+                	}
+                    
+					if ($kenoLife != 0) {
+	                    if ($kenoKickHand) {
+	                    	$kickSound.play();
+	                        $subzeroLife -= 1;
+	                        $subzeroLifeWidth -= 3;
+	                    } 
+	                    if ($kenoKickLeg) {
+	                    	$kickSound.play();
+	                        $subzeroLife -= 1;
+	                        $subzeroLifeWidth -= 3;
+	                    }
+                	}
+                }
+
+                if ($subzeroMoveForward) {
+                    if ($subzero.x < $width-$subzero.w && $subzero.x < $keno.x-$keno.w/2) {
+                        $subzero.x += 12;
+                    }
+                   
+                }
+                if ($subzeroMoveBack) {
+                    if ($subzero.x-$subzero.w > 0) {
+                        $subzero.x -= 12;
+                    }
+                }
+
+                $subzero.col++;
+                if (!$subzeroDeath) {
+                	if ($subzero.col >= 9) {
+                   		$subzero.col = 0;
+                	}
+                }
+                else {
+                	$subzero.col = 6;
+                	$subzero.row = 5;
+                	$keno.col = 8;
+                	$keno.row = 0;
+                }
+                
+                $ctx.drawImage(
+                	$subzero.image, 
+                	($subzero.col*$subzero.w), 
+                	($subzero.row*$subzero.h), 
+                	$subzero.w, $subzero.h, 
+                	($subzero.x - $subzero.w/2), 
+                	($subzero.y - $subzero.h/2), 
+                	$subzero.w*1.4, 
+                	$subzero.h*1.4
+                );
+
+				if ($kenoMoveForward) {
+                    if ($keno.x-$keno.w > 0 && $keno.x > $subzero.x+$subzero.w/2) {
+                        $keno.x -= 12;
+                    }
+                }
+                if ($kenoMoveBack) {
+                    if ($keno.x < $width-$keno.w) {
+                        $keno.x += 12;
+                    }
+                }
+
+                $keno.col++;
+                if (!$kenoDeath) {
+	                if ($keno.col >= 9) {
+	                    $keno.col = 0;
+	                }
+	            }
+	            else {
+	            	$keno.col = 6;
+                	$keno.row = 5;
+                	$subzero.col = 8;
+                	$subzero.row = 0;
+	            }
+
+                $ctx.drawImage(
+                	$keno.image, 
+                	($keno.col*$keno.w), 
+                	($keno.row*$keno.h), 
+                	$keno.w, $keno.h, 
+                	($keno.x - $keno.w/2), 
+                	($keno.y - $keno.h/2), 
+                	$keno.w*1.4, 
+                	$keno.h*1.4
+                );
+
+             	$ctx.font = 'bold 34px Castellar';
+                $ctx.fillStyle = 'blue';
+                $ctx.strokeStyle = 'white';
+                $ctx.fillText('Subzero life: '+$subzeroLife, 50, 70);
+                //$ctx.strokeText('Subzero life: '+$subzeroLife, 82, 72);
+
+                $ctx.fillRect(50, 90, $subzeroLifeWidth, 10);
+
+                $ctx.font = 'bold 34px Castellar';
+                $ctx.fillStyle = 'red';
+                $ctx.strokeStyle = 'white';
+                $ctx.fillText('Keno life: '+$kenoLife, 670, 70);
+                //$ctx.strokeText('Keno life: '+$kenoLife, 752, 72);
+
+                $ctx.fillRect($kenoLifePos, 90, $kenoLifeWidth, 10);
+            }
+
+            function clear() {
+                $ctx.clearRect(0, 0, $width, $height);
+            }
+
+            function startLoad(){
+                $bdImage = new Image();
+                $bdImage.src = 'images/bg/bg4.png';
+                $bdImage.onload = function() {};
+                
+                var $subzeroImage = new Image();
+                $subzeroImage.src = 'images/subzero.png';
+                $subzeroImage.onload = function() {};
+                
+                $subzero.image=$subzeroImage;
+                $subzero.x=200;
+                $subzero.y=350;
+                $subzero.w=200;
+                $subzero.h=200;
+                $subzero.row=2;
+                $subzero.col=0;
+
+                var $kenoImage = new Image();
+                $kenoImage.src = 'images/keno.png';
+                $kenoImage.onload = function() {};
+                
+                $keno.image=$kenoImage;
+                $keno.x=900;
+                $keno.y=350;
+                $keno.w=200;
+                $keno.h=200;
+                $keno.row=2;
+                $keno.col=0;
+                
+                $blockSound = new Audio('media/block.wav');
+                $blockSound.volume = 0.9;
+            
+                $kickSound = new Audio('media/kick.wav');
+                $kickSound.volume = 0.9;
+
+                $fightSound = new Audio('media/fight.wav');
+                $fightSound.volume = 0.9;
+
+            }
+
+            function win() {
+    			if ($subzeroWins) {
+                    $ctx.font = 'bold 46px Castellar';
+                	$ctx.fillStyle = 'blue';
+                	$ctx.strokeStyle = 'white';
+                	$ctx.fillText('Subzero WINS!', 300, 200);
+            	}
+            	if ($kenoWins) {
+                    $ctx.font = 'bold 46px Castellar';
+                	$ctx.fillStyle = 'red';
+                	$ctx.strokeStyle = 'white';
+                	$ctx.fillText('Keno WINS!', 350, 200);
+            	}
+            }
+
+            $(function(){
+                $canvas = document.getElementById('canvas');
+                $ctx = $canvas.getContext('2d');
+                
+                $width = $canvas.width;
+                $height = $canvas.height;
+                
+                startLoad();
+                drawCanvas();
+            	
+                $(window).keydown(function($event){
+                	if (!$subzeroDeath) {
+	                    switch ($event.keyCode) {
+                    	// SUBZERO
+	                        case 65: // назад
+	                            $subzero.row = 1;
+	                            $subzeroMoveBack = true;
+	                        break;
+	                        case 68: // вперед
+	                            $subzero.row = 1;
+	                            $subzeroMoveForward = true;
+	                        break;
+	                        case 81: // q
+	                            $subzero.row = 3;
+	                            $blockSound.currentTime = 0;
+	                   			$blockSound.play();
+	                            $subzeroKickHand = true;
+	                        break;
+	                        case 69: // e
+	                            $subzero.row = 4;
+	                            $blockSound.currentTime = 0;
+	                   			$blockSound.play();
+	                            $subzeroKickLeg = true;
+	                        break;
+	                    }
+	                }
+	                else {
+	                	$subzero.row = 5;
+	                	$keno.row = 0;
+	                	$('h1').delay(490).fadeOut(100, function(){
+	                		win();
+	                		clearInterval($setTime);
+	                	});
+	                }
+
+	                if (!$kenoDeath) {
+						switch ($event.keyCode) {
+                        // KANO
+	                        case 39: // back
+	                            $keno.row = 1;
+	                            $kenoMoveBack = true;
+	                        break;
+	                        case 37: // forward
+	                            $keno.row = 1;
+	                            $kenoMoveForward = true;
+	                        break;
+	                        case 38: // up
+	                            $keno.row = 3;
+	                            $blockSound.currentTime = 0;
+	                   			$blockSound.play();
+	                            $kenoKickHand = true;
+	                        break;
+	                        case 40: // down
+	                            $keno.row = 4;
+	                            $blockSound.currentTime = 0;
+	                   			$blockSound.play();
+	                            $kenoKickLeg = true;
+	                        break;
+                    	}
+	                }
+	                else {
+	                	$subzero.row = 0;
+	                	$keno.row = 5;
+	                	$('h1').delay(490).fadeOut(100, function(){
+	                		win();
+	                		clearInterval($setTime);
+	                	});
+	                }
+                    
+                });
+
+                $(window).keyup(function($event){ 
+                	if (!$subzeroDeath) {
+	                    switch ($event.keyCode) {
+	                    	// SUBZERO
+	                        case 65: // back
+	                            $subzero.row = 2;
+	                            $subzeroMoveBack = false;
+	                        break;
+	                        case 68: // forward
+	                            $subzero.row = 2;
+	                            $subzeroMoveForward = false;
+	                        break;
+	                        case 81: // q
+	                            $subzero.row = 2;
+	                            $subzeroKickHand = false;
+	                        break;
+	                        case 69: // e
+	                            $subzero.row = 2;
+	                            $subzeroKickLeg = false;
+	                        break;
+	                    }
+	                }
+	                else {
+	                	$subzero.row = 5;
+	                	$keno.row = 0;
+	                	$('h1').delay(490).fadeOut(100, function(){
+	                		win();
+	                		clearInterval($setTime);
+	                	});
+	                }
+
+					if (!$kenoDeath) {
+						switch ($event.keyCode) {
+	                    	// KANO
+	                        case 39: // back
+	                            $keno.row = 2;
+	                            $kenoMoveBack = false;
+	                        break;
+	                        case 37: // forward
+	                            $keno.row = 2;
+	                            $kenoMoveForward = false;
+	                        break;
+	                        case 38: // up
+	                            $keno.row = 2;
+	                            $kenoKickHand = false;
+	                        break;
+	                        case 40: // down
+	                            $keno.row = 2;
+	                            $kenoKickLeg = false;
+	                        break;
+	                    }
+	                }
+	                else {
+	                	$subzero.row = 0;
+	                	$keno.row = 5;
+	                	$('h1').delay(490).fadeOut(100, function(){
+	                		win();
+	                		clearInterval($setTime);
+	                	});
+	                }
+                });
+
+                setTimeout(drawCanvas, 50);
+                clearInterval($setTime);
+
+                $("#subzero1").fadeIn(1200);
+                $("#kano1").fadeIn(1200, function(){
+                	$("#but").fadeIn(100);
+                });
+                
+                $('#but').click(function(){
+                	$(this).hide();
+                	$("#subzero1").fadeOut(800);
+                		$("#kano1").fadeOut(800, function(){
+                			$("#back").fadeOut(1, function(){
+			        			var posFx = canvas.width/2 - $("#fight").width()/2;
+			    				var posFy = canvas.height/2 - $("#fight").height()/2;
+			        			$("#fight").animate({"left" : "420px", "top" : "190px", "height":"300px", "width":"300px", "opacity":"1"}, 600);
+			        			$fightSound.play();	
+			    				$("#fight").animate({"opacity":"0"}, 400);
+								
+                			});
+               			});
+            		});
+               	 	$setTime = setInterval(drawCanvas, $fps); 
+           	 	});
+        </script>
+    </head>
+    <body>
+        <div class="container">
+        	<img id="kano1" src="images/kano1.png">
+        	<img id="subzero1" src="images/subzero1.png">
+        	<div id="back"></div>
+        	<div id='but'>START</div>
+        	<h1></h1>
+        	<div id="fight"><img src="images/fight.png"></div>
+            <canvas id="canvas" width="1000" height="550"></canvas>
+        </div>
+    </body>
+</html>
